@@ -6,10 +6,13 @@ CFLAGS = -O0 -Wall -I . -g
 # Others systems will probably require something different.
 LIB = -lpthread
 
-all: tiny cgi
+all: tiny tiny-parallel cgi
 
 tiny: tiny.c csapp.o
 	$(CC) $(CFLAGS) -o tiny tiny.c csapp.o $(LIB)
+
+tiny-parallel: tiny-parallel.c csapp.o
+	$(CC) $(CFLAGS) -o tiny-parallel tiny-parallel.c csapp.o $(LIB)
 
 csapp.o: csapp.c
 	$(CC) $(CFLAGS) -c csapp.c
@@ -18,6 +21,5 @@ cgi:
 	(cd cgi-bin; make)
 
 clean:
-	rm -f *.o tiny *~
+	rm -f *.o tiny tiny-parallel *~
 	(cd cgi-bin; make clean)
-

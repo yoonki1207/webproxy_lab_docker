@@ -9,7 +9,7 @@
 #include "csapp.h"
 
 void doit(int fd);
-void read_requesthdrs(rio_t *rp);
+void read_requesthdrs(int fd, rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
@@ -73,7 +73,8 @@ void doit(int fd)
                 "Tiny does not implement this method");
     return;
   }
-  read_requesthdrs(&rio);
+  read_requesthdrs(fd, &rio);
+  return;
 
   /* Parse URI from GET request */
   is_static = parse_uri(uri, filename, cgiargs);
@@ -115,16 +116,46 @@ void doit(int fd)
 /*
  * read_requesthdrs - read HTTP request headers
  */
-void read_requesthdrs(rio_t *rp)
+void read_requesthdrs(int fd, rio_t *rp)
 {
-  char buf[MAXLINE];
+  char buf[MAXLINE], filetype[MAXLINE], body_buf[MAXLINE] = {'\0'};
+  char *p = buf;
+  int remaining = sizeof(buf);
+  int n;
+  // dup2(fd, STDOUT_FILENO);
+  get_filetype("echo.html", filetype);
 
-  Rio_readlineb(rp, buf, MAXLINE);
-  printf("%s", buf);
-  while (strcmp(buf, "\r\n"))
+  n = snprintf(p, remaining, "HTTP/1.0 200 OK\r\n");
+  p += n;
+  remaining -= n;
+
+  n = snprintf(p, remaining, "Server: Tiny Web Server\r\n");
+  p += n;
+  remaining -= n;
+
+  n = snprintf(p, remaining, "Connection: close\r\n");
+  p += n;
+  remaining -= n;
+
+  n = snprintf(p, remaining, "Content-length: %d\r\n", MAXLINE);
+  p += n;
+  remaining -= n;
+
+  n = snprintf(p, remaining, "Content-type: %s\r\n\r\n", filetype);
+  p += n;
+  remaining -= n;
+  // write headers
+  Rio_writen(fd, buf, MAXLINE - remaining);
+
+  // read payload and write
+  Rio_readlineb(rp, body_buf, MAXLINE);
+  printf("> %s", body_buf);
+  Rio_writen(fd, body_buf, strlen(body_buf));
+  while (strcmp(body_buf, "\r\n"))
   {
-    Rio_readlineb(rp, buf, MAXLINE);
-    printf("%s", buf);
+    Rio_readlineb(rp, body_buf, MAXLINE);
+    Rio_writen(fd, body_buf, strlen(body_buf));
+    printf("> %s", body_buf);
   }
   return;
 }
